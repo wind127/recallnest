@@ -1,0 +1,27 @@
+[
+  {
+    "id": "synthetic-chatgpt-learning",
+    "title": "【合成示例 / Synthetic demo】中文学习计划",
+    "create_time": 1791936000,
+    "update_time": 1791936600,
+    "current_node": "assistant-b",
+    "mapping": {
+      "root": {"parent": null, "children": ["user-1"], "message": null},
+      "user-1": {
+        "parent": "root", "children": ["assistant-a", "assistant-b"],
+        "message": {"id": "user-1", "author": {"role": "user"}, "create_time": 1791936000,
+          "content": {"content_type": "text", "parts": ["【合成示例】我偏好用中文学习，每天复习十分钟。"]}}
+      },
+      "assistant-a": {
+        "parent": "user-1", "children": [],
+        "message": {"id": "assistant-a", "author": {"role": "assistant"},
+          "content": {"content_type": "text", "parts": ["【合成示例】可以先制作复习卡片。"]}}
+      },
+      "assistant-b": {
+        "parent": "user-1", "children": [],
+        "message": {"id": "assistant-b", "author": {"role": "assistant"},
+          "content": {"content_type": "text", "parts": ["【合成示例】先保存来源，再制作可编辑的复习卡片。"]}}
+      }
+    }
+  }
+]

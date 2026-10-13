@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feat/initial-release]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Python ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.10'
+          - os: ubuntu-latest
+            python: '3.14'
+          - os: windows-latest
+            python: '3.12'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: '0.11.28'
+          python-version: ${{ matrix.python }}
+      - run: uv sync --locked
+      - run: uv run --locked pytest -q
+      - run: uv build
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm test -- --run
+      - run: npm run build
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: '0.11.28'
+          python-version: '3.12'
+      - run: uv sync --locked
+        working-directory: .
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker compose config --quiet
+      - run: docker compose up --build -d
+      - name: Verify HTTP service, built UI and writable archive
+        run: |
+          curl --fail --retry 12 --retry-all-errors --retry-delay 2 http://127.0.0.1:8787/api/health
+          curl --fail http://127.0.0.1:8787/ > /tmp/recallnest-index.html
+          rg -q 'id="root"' /tmp/recallnest-index.html
+          curl --fail -X POST http://127.0.0.1:8787/api/demo
+          curl --fail http://127.0.0.1:8787/api/export > /tmp/recallnest-export.json
+          python -c "import json; data=json.load(open('/tmp/recallnest-export.json')); assert len(data['conversations']) == 3; assert len(data['memories']) == 1"
+      - name: Verify saved settings survive restart
+        run: |
+          curl --fail -X POST http://127.0.0.1:8787/api/settings -H 'Content-Type: application/json' -d '{"embedding_model":"ci-persistence","api_key":"synthetic-ci-key"}'
+          docker compose restart recallnest
+          curl --fail --retry 12 --retry-all-errors --retry-delay 2 http://127.0.0.1:8787/api/health
+          curl --fail http://127.0.0.1:8787/api/settings > /tmp/recallnest-settings.json
+          python -c "import json; data=json.load(open('/tmp/recallnest-settings.json')); assert data['embedding_model'] == 'ci-persistence'; assert data['has_api_key']; assert not data['model_configured']"
+      - name: Verify explicit environment overrides only its field
+        run: |
+          python -c "from pathlib import Path; Path('.env').write_text('RECALLNEST_CHAT_MODEL=ci-env-override\n', encoding='utf-8')"
+          docker compose up -d --force-recreate
+          curl --fail --retry 12 --retry-all-errors --retry-delay 2 http://127.0.0.1:8787/api/health
+          curl --fail http://127.0.0.1:8787/api/settings > /tmp/recallnest-settings.json
+          python -c "import json; data=json.load(open('/tmp/recallnest-settings.json')); assert data['chat_model'] == 'ci-env-override'; assert data['embedding_model'] == 'ci-persistence'; assert data['has_api_key']; assert not data['model_configured']"
+          curl --fail http://127.0.0.1:8787/api/export > /tmp/recallnest-export.json
+          python -c "import json; raw=open('/tmp/recallnest-export.json').read(); data=json.loads(raw); assert len(data['conversations']) == 3; assert len(data['memories']) == 1; assert 'synthetic-ci-key' not in raw"
+      - name: Show container diagnostics
+        if: failure()
+        run: docker compose logs recallnest
+      - name: Remove disposable smoke service and volume
+        if: always()
+        run: docker compose down -v
