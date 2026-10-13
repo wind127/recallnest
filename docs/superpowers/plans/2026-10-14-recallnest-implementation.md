@@ -78,10 +78,10 @@ def test_repeat_import_is_idempotent(client, sample_bytes):
 **Create:** `README.md`, `README.en.md`, `LICENSE`, `.env.example`, `Dockerfile`, `compose.yaml`, `.dockerignore`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `docs/verification.md`.
 
 - [x] Document exact install/build/run, import formats, model setup, continuous capture, MCP, memory lifecycle, review rules, local-only deployment and data export. Attribute researched design sources without claiming code reuse.
-- [ ] Build a multi-stage Docker image with frontend assets and Python service; bind Compose host publishing to 127.0.0.1. CI runs backend tests and frontend tests/build with locked dependencies.
+- [x] Build a multi-stage Docker image with frontend assets and Python service; bind Compose host publishing to 127.0.0.1. CI runs backend tests and frontend tests/build with locked dependencies.
 - [x] Run `uv run pytest -q`, `npm test -- --run`, `npm run build`, real browser acceptance and a source/package secret/private-data audit. Record actual command outcomes and remaining platform limitations.
 - [x] Final fresh independent code review; fix findings before release.
-- [ ] Commit and prepare public `main` with the verified source tree and GitHub noreply identity, create the authorized public `wind127/recallnest` repository, push source and verify remote default branch/commit and CI status. Retain private development history locally; do not publish local identity metadata, running data or credentials.
+- [x] Commit and prepare public `main` with the verified source tree and GitHub noreply identity, create the authorized public `wind127/recallnest` repository, push source and verify remote default branch/commit and CI status. Retain private development history locally; do not publish local identity metadata, running data or credentials.
 
 ## Plan self-review
 
