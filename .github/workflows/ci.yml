@@ -85,7 +85,7 @@ jobs:
         run: |
           curl --fail --retry 12 --retry-all-errors --retry-delay 2 http://127.0.0.1:8787/api/health
           curl --fail http://127.0.0.1:8787/ > /tmp/recallnest-index.html
-          rg -q 'id="root"' /tmp/recallnest-index.html
+          grep -q 'id="root"' /tmp/recallnest-index.html
           curl --fail -X POST http://127.0.0.1:8787/api/demo
           curl --fail http://127.0.0.1:8787/api/export > /tmp/recallnest-export.json
           python -c "import json; data=json.load(open('/tmp/recallnest-export.json')); assert len(data['conversations']) == 3; assert len(data['memories']) == 1"
