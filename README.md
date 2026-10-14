@@ -38,6 +38,12 @@ uv run recallnest serve
 
 开发界面使用 `web/` 下的 `npm run dev`，API 使用上述启动命令。Vite 将 `/api` 转发到本地服务。
 
+### 安装部署 Prompt
+
+```text
+请在本机安装并启动 https://github.com/wind127/recallnest。优先使用 Docker Compose；没有 Docker 就按 README 源码安装。保留已有数据，验证 /api/health 和网页可访问，最后给我访问地址。模型稍后在界面配置。
+```
+
 ## 模型与数据
 
 在界面的模型设置中填写兼容接口的 base URL、聊天模型和可选密钥。嵌入模型可选，用于增加语义检索。也可以使用 `.env.example` 中列出的环境变量；复制文件本身不会自动加载它，需要由运行环境传入。

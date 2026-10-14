@@ -38,6 +38,12 @@ Open <http://127.0.0.1:8787>. Import your files or explicitly load the labeled s
 
 For frontend development, run `npm run dev` inside `web/` alongside the API service. Vite proxies `/api` to the local backend.
 
+### Installation prompt
+
+```text
+Install and start https://github.com/wind127/recallnest locally. Prefer Docker Compose; otherwise follow the README source installation. Preserve existing data, verify /api/health and the web UI, and report the URL. I'll configure the model in settings later.
+```
+
 ## Models and storage
 
 Configure a compatible base URL, chat model, and optional API key in the settings view. An optional embedding model enables semantic retrieval. `.env.example` lists supported environment variables; copying it does not load those values automatically.
