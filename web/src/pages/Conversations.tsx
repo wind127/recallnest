@@ -6,7 +6,13 @@ import { ChatComposer } from "../components/ChatComposer";
 import { MessageView } from "../components/Evidence";
 import { Filters, ProjectSelect } from "../components/Filters";
 import { Empty, Field, History, Notice, Timestamp } from "../components/UI";
-export function Conversations({ initialId }: { initialId?: string }) {
+export function Conversations({
+  initialId,
+  codexMode = false,
+}: {
+  initialId?: string;
+  codexMode?: boolean;
+}) {
   const [filters, setFilters] = useState<FilterValues>({});
   const [selected, setSelected] = useState(initialId || "");
   const [branch, setBranch] = useState("");
@@ -76,7 +82,11 @@ export function Conversations({ initialId }: { initialId?: string }) {
             </div>
           ))}
           {list.data && !list.data.items.length && (
-            <Empty>暂无对话。可以导入历史，也可以直接发送新消息。</Empty>
+            <Empty>
+              {codexMode
+                ? "暂无对话。可以导入历史，或在 Codex 中用 $recallnest 保存会话。"
+                : "暂无对话。可以导入历史，也可以直接发送新消息。"}
+            </Empty>
           )}
         </section>
         <section className="reading-pane" aria-label="对话详情">
@@ -186,22 +196,29 @@ export function Conversations({ initialId }: { initialId?: string }) {
               </details>
             </>
           )}
-          <ChatComposer
-            key={`${selected}/${composerSession}`}
-            conversationId={selected || null}
-            branch={branch || null}
-            onSaved={(result) => {
-              if (selectionEpoch.current !== composerSession) return;
-              // Manual selection resets the composer; response advancement
-              // retains its input, context and original idempotent retry body.
-              const node =
-                result.assistant_message?.id || result.user_message?.id;
-              if (selected && result.conversation_id === selected && node)
-                setBranch(node);
-              list.refresh();
-              detail.refresh();
-            }}
-          />
+          {codexMode ? (
+            <p className="meta">
+              请在 Codex 中继续对话，并用 $recallnest
+              保存和整理。这里查看原文与分支。
+            </p>
+          ) : (
+            <ChatComposer
+              key={`${selected}/${composerSession}`}
+              conversationId={selected || null}
+              branch={branch || null}
+              onSaved={(result) => {
+                if (selectionEpoch.current !== composerSession) return;
+                // Manual selection resets the composer; response advancement
+                // retains its input, context and original idempotent retry body.
+                const node =
+                  result.assistant_message?.id || result.user_message?.id;
+                if (selected && result.conversation_id === selected && node)
+                  setBranch(node);
+                list.refresh();
+                detail.refresh();
+              }}
+            />
+          )}
         </section>
       </div>
     </>

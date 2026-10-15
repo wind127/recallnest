@@ -4,9 +4,11 @@
 
 Keep your AI conversations as searchable knowledge, review material, project records, and personal memory with traceable sources.
 
-[中文](README.md) · [Imports](docs/imports.md) · [Models](docs/models.md) · [CLI / MCP](docs/integrations.md) · [Deployment](docs/deployment.md) · [API contract](docs/api-contract.md)
+[中文](README.md) · [Codex setup](docs/codex.md) · [Imports](docs/imports.md) · [Models](docs/models.md) · [CLI / MCP](docs/integrations.md) · [Deployment](docs/deployment.md) · [API contract](docs/api-contract.md)
 
 RecallNest is a local, single-user application with a React workbench, FastAPI service, and SQLite archive. An optional OpenAI-compatible provider handles consolidation and chat. Import, text search, manual editing, and review also work without a model.
+
+**Recommended: Codex organizes; RecallNest stores.** The bundled skill and MCP workflow use your existing Codex model/account, with no additional model API key and no copied login token. The web UI provides lookup, review and human memory confirmation. See [Codex setup](docs/codex.md).
 
 ## What it does
 
@@ -31,20 +33,25 @@ cd web
 npm ci
 npm run build
 cd ..
-uv run recallnest serve
+uv run --locked python scripts/install_codex.py
+uv run --locked recallnest serve --no-ai
 ```
 
 Open <http://127.0.0.1:8787>. Import your files or explicitly load the labeled synthetic demo. RecallNest does not scan your history directories on first launch.
+
+Setup requires the Codex CLI. It installs the user-level `$recallnest` skill and registers a local-only MCP server. Restart Codex, then ask it to organize the authorized backlog with `$recallnest`. Capture archives text; consolidation runs in Codex, not automatically after Codex closes.
 
 For frontend development, run `npm run dev` inside `web/` alongside the API service. Vite proxies `/api` to the local backend.
 
 ### Installation prompt
 
 ```text
-Install and start https://github.com/wind127/recallnest locally. Prefer Docker Compose; otherwise follow the README source installation. Preserve existing data, verify /api/health and the web UI, and report the URL. I'll configure the model in settings later.
+Install and connect https://github.com/wind127/recallnest using docs/codex.md. Set up the skill and MCP, and start the UI with --no-ai. Codex organizes using my existing allowance; RecallNest stores locally without an extra API key. Preserve existing data, verify the integration, and report the URL and restart instructions.
 ```
 
 ## Models and storage
+
+Codex mode needs no provider configuration: `--no-ai` disables direct model calls and the provider worker. The optional standalone provider mode below uses `recallnest serve` without that flag. Do not run provider and Codex consolidation concurrently. Codex retains its existing account limits and billing; API-key-authenticated Codex retains its API billing.
 
 Configure a compatible base URL, chat model, and optional API key in the settings view. An optional embedding model enables semantic retrieval. `.env.example` lists supported environment variables; copying it does not load those values automatically.
 
@@ -63,9 +70,9 @@ uv run --locked recallnest capture status --data-dir "/path/to/private-data"
 uv run --locked recallnest capture stop --data-dir "/path/to/private-data"
 ```
 
-Capture preserves raw records and versions, deduplicates replayed messages, and retries temporarily unreadable or changing files. Automatic model consolidation requires `recallnest serve` to run with the same data directory and a configured provider.
+Capture preserves raw records and versions, deduplicates replayed messages, and retries temporarily unreadable or changing files. Codex organizes the backlog through the skill. Only standalone provider consolidation requires `recallnest serve` with a configured provider. MCP, capture and the UI must share one data directory.
 
-The stdio MCP server exposes `search`, `fetch`, `context`, `submit`, and `remember`. Context includes only active confirmed memories; new memories submitted through the tool remain candidates. The [integration guide](docs/integrations.md) includes generic host configuration and optional Codex CLI registration.
+The stdio MCP server exposes seven tools: `search`, `fetch`, `context`, `submit`, `remember`, `prepare_consolidation`, and `complete_consolidation`. The last two accept host-generated knowledge, review cards and memory candidates with version-checked evidence. Context includes only active confirmed memories. See the [integration guide](docs/integrations.md).
 
 Offline import and export are also available:
 

@@ -70,6 +70,7 @@ export default function App() {
   const [revision, setRevision] = useState(0);
   const main = useRef<HTMLElement>(null);
   const status = useResource<ServiceStatus>("/status");
+  const codexMode = status.data?.consolidation_mode === "codex";
   const action = useAction();
   useEffect(() => {
     const update = () => {
@@ -107,9 +108,13 @@ export default function App() {
     <Search key={queryText} refreshToken={searchRevision} text={queryText} />
   ) : (
     {
-      overview: <Overview onImport={() => setModal("import")} />,
+      overview: (
+        <Overview onImport={() => setModal("import")} codexMode={codexMode} />
+      ),
       knowledge: <Knowledge initialId={target.id} />,
-      conversations: <Conversations initialId={target.id} />,
+      conversations: (
+        <Conversations initialId={target.id} codexMode={codexMode} />
+      ),
       projects: <Projects initialId={target.id} />,
       review: <Review initialId={target.id} />,
       memories: <Memories initialId={target.id} />,
@@ -183,13 +188,15 @@ export default function App() {
             </form>
             <div className="topbar-actions">
               <button onClick={() => setModal("import")}>导入对话</button>
-              <button onClick={() => setModal("settings")}>模型设置</button>
+              {!codexMode && (
+                <button onClick={() => setModal("settings")}>模型设置</button>
+              )}
             </div>
           </header>
           <div className="service-state">
             <span
               className={
-                status.data?.model_configured
+                codexMode || status.data?.model_configured
                   ? "status-dot configured"
                   : "status-dot"
               }
@@ -200,11 +207,13 @@ export default function App() {
                 ? "正在连接本地服务"
                 : status.error
                   ? "本地服务不可用"
-                  : status.data?.model_configured
-                    ? "模型字段已配置（连接验证请查看设置）"
-                    : "模型尚未配置"}
+                  : codexMode
+                    ? "Codex 负责整理 · 本地保存与复习 · 无需额外 API Key"
+                    : status.data?.model_configured
+                      ? "模型字段已配置（连接验证请查看设置）"
+                      : "模型尚未配置"}
             </span>
-            {status.data && !status.data.model_configured && (
+            {status.data && !codexMode && !status.data.model_configured && (
               <button
                 className="text-button"
                 onClick={() => setModal("settings")}

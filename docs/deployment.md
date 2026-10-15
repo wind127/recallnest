@@ -1,5 +1,7 @@
 # 本地部署
 
+**接入 Codex 推荐使用[源码 + 技能/MCP](codex.md)**，网页以 `recallnest serve --no-ai` 启动。这样 Codex 使用当前账号额度整理，RecallNest 不需要额外模型密钥。下文 Docker 配置保留独立服务方式；它不会自动安装宿主机的 Codex 技能/MCP，容器卷也不会自动与本机 MCP 共享。
+
 源码安装与界面构建见 [README](../README.md)。默认服务地址为 `http://127.0.0.1:8787`，数据目录为 `~/.recallnest`。更换电脑或运行方式前，停止服务并备份整个数据目录。
 
 ## Docker Compose

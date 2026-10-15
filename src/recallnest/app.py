@@ -62,25 +62,30 @@ class LocalBoundaryMiddleware:
             await JSONResponse({"detail": "Request exceeds byte limit"}, 413)(scope, receive, send)
 
 
-def create_app(data_dir=None, start_worker=False, *, settings=None):
+def create_app(data_dir=None, start_worker=False, *, settings=None, allow_ai=True):
     explicit_settings = settings is not None
     settings = settings or get_settings(data_dir)
     @asynccontextmanager
     async def lifespan(app):
-        if start_worker:
+        if start_worker and allow_ai:
             app.state.jobs.start()
             app.state.worker_running = True
         try:
             yield
         finally:
-            if start_worker:
+            if start_worker and allow_ai:
                 app.state.jobs.stop()
                 app.state.worker_running = False
     app = FastAPI(title="RecallNest", version=__version__, lifespan=lifespan)
     app.state.settings = settings
     app.state.connections = ConnectionSettings(settings, load_saved=not explicit_settings)
     app.state.repository = Repository(settings.data_dir / "recallnest.sqlite3")
-    app.state.ai_factory = lambda: AIClient(app.state.connections.current(), getattr(app.state, "provider_transport", None))
+    def ai_factory():
+        if not allow_ai:
+            raise AIError("configuration_required", "Codex mode: organize in Codex with the recallnest skill; model API calls are disabled")
+        return AIClient(app.state.connections.current(), getattr(app.state, "provider_transport", None))
+    app.state.ai_factory = ai_factory
+    app.state.allow_ai = allow_ai
     app.state.jobs = JobService(app.state.repository, app.state.ai_factory)
     app.state.search = SearchService(app.state.repository, app.state.ai_factory)
     app.state.chat = ChatService(app.state.repository, app.state.ai_factory, app.state.search)
@@ -121,7 +126,7 @@ def create_app(data_dir=None, start_worker=False, *, settings=None):
     @app.get("/api/status")
     def status():
         return {"status": "ready", "version": __version__, "database": "sqlite", "model_configured": app.state.connections.current().model_configured,
-                "worker_running": app.state.worker_running, "limits": {"upload_bytes": settings.max_upload_bytes,
+                "worker_running": app.state.worker_running, "consolidation_mode": "provider" if allow_ai else "codex", "limits": {"upload_bytes": settings.max_upload_bytes,
                 "zip_expanded_bytes": settings.max_zip_bytes, "zip_members": settings.max_zip_members}}
 
     @app.get("/api/stats")

@@ -65,6 +65,15 @@ CREATE TABLE IF NOT EXISTS processed_messages (
  message_id TEXT NOT NULL REFERENCES messages(id), version INTEGER NOT NULL,
  PRIMARY KEY(message_id,version)
 );
+CREATE TABLE IF NOT EXISTS codex_progress (
+ message_id TEXT NOT NULL REFERENCES messages(id), version INTEGER NOT NULL,
+ next_offset INTEGER NOT NULL, PRIMARY KEY(message_id,version)
+);
+CREATE TABLE IF NOT EXISTS codex_batches (
+ id TEXT PRIMARY KEY, batch_key TEXT NOT NULL UNIQUE,
+ conversation_id TEXT NOT NULL REFERENCES conversations(id), revision INTEGER NOT NULL,
+ versions_hash TEXT NOT NULL, request TEXT NOT NULL, created_at TEXT NOT NULL, result TEXT
+);
 CREATE TABLE IF NOT EXISTS vectors (
  entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, content_hash TEXT NOT NULL,
  provider_id TEXT NOT NULL, model TEXT NOT NULL, vector TEXT NOT NULL,

@@ -10,7 +10,13 @@ const jobNames: Record<string, string> = {
   completed: "整理完成",
   failed: "整理失败",
 };
-export function Overview({ onImport }: { onImport: () => void }) {
+export function Overview({
+  onImport,
+  codexMode = false,
+}: {
+  onImport: () => void;
+  codexMode?: boolean;
+}) {
   const stats = useResource<Record<string, number>>("/stats");
   const knowledge = useResource<{ items: Knowledge[] }>("/knowledge");
   const reviews = useResource<{ items: ReviewCard[] }>("/reviews?due=true");
@@ -95,11 +101,15 @@ export function Overview({ onImport }: { onImport: () => void }) {
           {stats.data.conversations === 0 && (
             <Empty>
               <h2>还没有对话档案</h2>
-              <p>导入历史对话，或开始一次新的对话。</p>
+              <p>
+                {codexMode
+                  ? "导入历史对话，或在 Codex 中保存当前对话。"
+                  : "导入历史对话，或开始一次新的对话。"}
+              </p>
               <div className="actions">
                 <button onClick={onImport}>选择导入文件</button>
                 <button onClick={() => go({ page: "conversations" })}>
-                  开始新对话
+                  {codexMode ? "查看对话档案" : "开始新对话"}
                 </button>
                 <button
                   disabled={action.busy}
@@ -174,6 +184,7 @@ export function Overview({ onImport }: { onImport: () => void }) {
             </button>
             <button
               disabled={
+                codexMode ||
                 action.busy ||
                 !jobs.data?.items.some((job) => job.status === "failed")
               }
@@ -183,6 +194,13 @@ export function Overview({ onImport }: { onImport: () => void }) {
             </button>
           </div>
         </div>
+        {codexMode && (
+          <p className="meta">
+            回到 Codex 输入「用 $recallnest
+            整理待处理会话」。这里查看结果、复习和确认记忆；整理会随 Codex
+            使用消耗现有额度。
+          </p>
+        )}
         <Notice error={jobs.error || action.error} busy={action.busy} />
         {progress && <p role="status">{progress}</p>}
         {jobs.data?.items.map((job) => (
@@ -216,6 +234,7 @@ export function Overview({ onImport }: { onImport: () => void }) {
                   {(
                     {
                       extracted: "已由模型整理",
+                      codex: "已由 Codex 整理并保存",
                       synthetic_skipped: "合成示例：未调用模型",
                       superseded: "源资料已更新，结果已舍弃",
                       no_new_text: "没有新的非空文本",
@@ -232,12 +251,12 @@ export function Overview({ onImport }: { onImport: () => void }) {
               )}
             </div>
             <div className="actions">
-              {job.status === "queued" && (
+              {!codexMode && job.status === "queued" && (
                 <button disabled={action.busy} onClick={() => operate(job)}>
                   运行整理
                 </button>
               )}
-              {job.status === "failed" && (
+              {!codexMode && job.status === "failed" && (
                 <button
                   disabled={action.busy}
                   onClick={() => operate(job, true)}

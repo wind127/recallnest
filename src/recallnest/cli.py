@@ -19,8 +19,8 @@ def default_web_dir():
     return Path(__file__).resolve().parents[2] / "web" / "dist"
 
 
-def build_app(data_dir=None, web_dir=None):
-    app = create_app(data_dir=data_dir, start_worker=True)
+def build_app(data_dir=None, web_dir=None, *, allow_ai=True):
+    app = create_app(data_dir=data_dir, start_worker=True, allow_ai=allow_ai)
     directory = Path(web_dir).expanduser().resolve() if web_dir is not None else default_web_dir()
 
     @app.get("/{path:path}", include_in_schema=False)
@@ -51,6 +51,7 @@ def parser():
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", default=8787, type=int)
     serve.add_argument("--web-dir", type=Path)
+    serve.add_argument("--no-ai", action="store_true", help="Codex organizes; disable all model API calls and the provider worker")
     imported = commands.add_parser("import", help="Import JSON, Codex JSONL, Markdown or ChatGPT ZIP")
     imported.add_argument("file", type=Path)
     imported.add_argument("--source-identity")
@@ -68,6 +69,7 @@ def parser():
         if name == "start":
             action.add_argument("--interval", type=float, default=1.0)
     mcp = commands.add_parser("mcp", help="Run the MCP server using stdio only")
+    mcp.add_argument("--local-only", action="store_true", help="Disable model API calls, including semantic search")
     worker = commands.add_parser("_capture-worker", help=argparse.SUPPRESS)
     worker.add_argument("--root", required=True, type=Path)
     worker.add_argument("--token", required=True)
@@ -91,10 +93,10 @@ def main(args=None):
             if not 1 <= arguments.port <= 65535:
                 raise ValueError("Port must be between 1 and 65535")
             import uvicorn
-            uvicorn.run(build_app(arguments.data_dir, arguments.web_dir), host=arguments.host, port=arguments.port)
+            uvicorn.run(build_app(arguments.data_dir, arguments.web_dir, allow_ai=not arguments.no_ai), host=arguments.host, port=arguments.port)
         elif arguments.command == "mcp":
             from .mcp_server import build_server
-            build_server(arguments.data_dir).run(transport="stdio")
+            build_server(arguments.data_dir, local_only=arguments.local_only).run(transport="stdio")
         elif arguments.command == "_capture-worker":
             CaptureDaemon(arguments.data_dir).run(arguments.root, arguments.token, arguments.interval, arguments.source_identity)
         elif arguments.command == "capture":

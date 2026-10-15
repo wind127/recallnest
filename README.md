@@ -4,9 +4,11 @@
 
 把 AI 会话留下来，变成能查阅、能复习、有原文依据的知识与个人记忆。
 
-[English](README.en.md) · [导入说明](docs/imports.md) · [记忆与复习](docs/memory-and-review.md) · [模型设置](docs/models.md) · [CLI / MCP](docs/integrations.md) · [部署](docs/deployment.md) · [API](docs/api-contract.md)
+[English](README.en.md) · [Codex 接入](docs/codex.md) · [导入说明](docs/imports.md) · [记忆与复习](docs/memory-and-review.md) · [模型设置](docs/models.md) · [CLI / MCP](docs/integrations.md) · [部署](docs/deployment.md) · [API](docs/api-contract.md)
 
 RecallNest 是本地运行的单用户应用。原始会话、项目、知识、复习记录和记忆保存在 SQLite 中；可选择连接 OpenAI 兼容模型，用于整理和问答。没有模型也可以导入、搜索、手动整理和复习。
+
+**推荐：Codex 负责整理，RecallNest 负责沉淀。** 安装配套技能与 MCP 后，直接使用 Codex 当前账号的模型和额度，无需额外 API Key，也不读取或复制 Codex 登录 token。网页用于查阅、复习和确认记忆。[完整接入步骤](docs/codex.md)
 
 ## 四个使用场景
 
@@ -31,20 +33,25 @@ cd web
 npm ci
 npm run build
 cd ..
-uv run recallnest serve
+uv run --locked python scripts/install_codex.py
+uv run --locked recallnest serve --no-ai
 ```
 
 打开 <http://127.0.0.1:8787>。首次打开可以导入自己的文件，也可以选择载入明确标注的合成示例；不会自动读取你的历史目录。
+
+接入需要已安装 Codex CLI。脚本安装用户级 `$recallnest` 技能并注册仅本地读写的 MCP；重启 Codex 后输入「用 $recallnest 整理待处理会话」。持续采集只负责归档，整理在 Codex 中执行，不是关闭 Codex 后自动运行。
 
 开发界面使用 `web/` 下的 `npm run dev`，API 使用上述启动命令。Vite 将 `/api` 转发到本地服务。
 
 ### 安装部署 Prompt
 
 ```text
-请在本机安装并启动 https://github.com/wind127/recallnest。优先使用 Docker Compose；没有 Docker 就按 README 源码安装。保留已有数据，验证 /api/health 和网页可访问，最后给我访问地址。模型稍后在界面配置。
+请按 https://github.com/wind127/recallnest 的 docs/codex.md 安装接入，配置技能和 MCP，以 --no-ai 启动网页。使用 Codex 现有额度，无需额外 API Key。保留已有数据，验证后给出访问地址和重启提示。
 ```
 
 ## 模型与数据
+
+上述 Codex 模式不需要配置模型；`--no-ai` 禁用网页服务的模型调用和后台模型整理。可选的独立模型方式使用不带 `--no-ai` 的 `recallnest serve`，单独配置下述接口，不与 Codex 整理同时运行。Codex 额度仍受当前账号限制；若 Codex 本身使用 API Key，则沿用其原有计费方式。
 
 在界面的模型设置中填写兼容接口的 base URL、聊天模型和可选密钥。嵌入模型可选，用于增加语义检索。也可以使用 `.env.example` 中列出的环境变量；复制文件本身不会自动加载它，需要由运行环境传入。
 
@@ -54,9 +61,9 @@ base URL 通常以 `/v1` 结尾，例如适配的本地服务 `http://127.0.0.1:
 
 ## 先试一次完整流程
 
-导入文件并确认预览，进入会话核对原文。配置模型后查看整理任务与生成的知识、卡片和记忆候选；打开引用确认来源，确认一条准确的记忆，再发起新对话。进入复习，揭示答案并反馈掌握程度。
+导入文件并确认预览，进入会话核对原文。在 Codex 中输入「用 $recallnest 整理待处理会话」，查看生成的知识、卡片和记忆候选；打开引用确认来源，确认一条准确的记忆，再在 Codex 中继续对话。进入网页复习，揭示答案并反馈掌握程度。
 
-任务失败保留原文，可在任务列表查看原因并重试。未配置模型时，整理状态会明确说明配置要求，不会生成假的 AI 结果。
+任务失败保留原文。Codex 整理分批校验并持久化进度，重复提交不重复写入，后续继续处理新增或被编辑的消息版本。
 
 ## 持续采集与工具接入
 
@@ -69,9 +76,9 @@ uv run --locked recallnest capture status --data-dir "D:\RecallNest Private"
 uv run --locked recallnest capture stop --data-dir "D:\RecallNest Private"
 ```
 
-采集器在后台运行，保留原始记录和版本；重复扫描不重复创建消息。临时不可读或正在改写的日志会报告错误，并在后续扫描中重试。模型自动整理需要同时运行使用同一数据目录的 `recallnest serve`。
+采集器在后台运行，保留原始记录和版本；重复扫描不重复创建消息。临时不可读或正在改写的日志会报告错误，并在后续扫描中重试。Codex 模式由技能整理待处理资料；独立模型的自动整理才需要同时运行配置模型的 `recallnest serve`。采集、MCP 和网页应使用同一个数据目录。
 
-MCP 提供 `search`、`fetch`、`context`、`submit`、`remember` 五个 stdio 工具。读取个人上下文只返回有效的已确认记忆，工具提交的个人记忆先成为候选。[接入文档](docs/integrations.md) 包含通用配置及可选的 Codex CLI 注册命令。
+MCP 提供七个 stdio 工具：`search`、`fetch`、`context`、`submit`、`remember`，以及供 Codex 整理回写的 `prepare_consolidation`、`complete_consolidation`。读取个人上下文只返回有效的已确认记忆，个人记忆先成为候选。[接入文档](docs/integrations.md) 包含工具契约和通用配置。
 
 也可以离线导入和导出：
 

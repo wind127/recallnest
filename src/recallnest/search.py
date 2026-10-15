@@ -73,9 +73,9 @@ class SearchService:
         docs = self.documents(**filters)
         query = q.casefold()
         vectors, query_vector, mode, warning = {}, None, "text", None
-        ai = self.ai_factory()
         if semantic:
             try:
+                ai = self.ai_factory()
                 query_vector = ai.embeddings([q])[0]
                 identity = provider_identity(ai.settings)
                 with self.repo.db.read() as connection:

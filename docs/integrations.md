@@ -4,6 +4,8 @@ Install with `uv sync --locked`; all commands below run from the RecallNest chec
 
 ## Local service
 
+For the recommended **Codex organizes / RecallNest stores** workflow, follow [codex.md](codex.md). `serve --no-ai` provides the viewing/review UI without any direct model calls; `mcp --local-only` runs archive tools and host-generated consolidation without a provider. These options work even if provider settings were saved previously.
+
 ```powershell
 uv run --locked recallnest serve
 uv run --locked recallnest serve --data-dir "D:\RecallNest Private" --port 8787
@@ -53,11 +55,11 @@ Missing or inaccessible directories and unreadable entries appear as safe relati
 
 Partial trailing JSON or split UTF-8 bytes remain pending until completed; a valid final JSON record is imported even without a newline. A malformed newline-terminated record reports its line number, leaves the file checkpoint unchanged and is retried on the next scan. Truncation/rewrite also replays; prior messages and source versions remain archived. Symbolic links and Windows junction/reparse entries are skipped, and resolved paths must stay within the configured root. Checkpoints are atomically replaced in the private data directory after the archive transaction commits. A crash between those writes safely replays through deduplication.
 
-Capture and MCP archive sources and enqueue consolidation jobs. Keep `recallnest serve` running with a configured provider for automatic model consolidation; these integrations do not run a second model worker.
+Capture and MCP archive sources and enqueue consolidation jobs. In Codex mode, use the skill to organize them through the two handoff tools below; the web service is optional for consolidation. For standalone provider consolidation only, keep `recallnest serve` running with a configured provider. Do not run both organizers concurrently.
 
 ## MCP: stdio only
 
-The first release exposes exactly five tools using the official SDK:
+The server exposes seven tools using the official SDK:
 
 | Tool | Inputs | Result |
 | --- | --- | --- |
@@ -66,6 +68,10 @@ The first release exposes exactly five tools using the official SDK:
 | `context` | `offset=0`, `limit=20` (1–50 memories) | Only active confirmed memories with current proof, total and next offset. Long content is marked `content_truncated`; retrieve it through `fetch(kind="memory")`. |
 | `submit` | `conversation` in the strict REST normalized conversation shape | Transactional import counts and internal conversation IDs in the shared archive. |
 | `remember` | `memory` in the strict REST memory shape | A validated memory **candidate**, internal ID and bounded proof. Requested confirmed/rejected/etc. status is overridden to candidate. Human confirmation remains in RecallNest. |
+| `prepare_consolidation` | Optional internal `conversation_id`; omit for the authorized backlog | `idle`, or a persisted `ready` batch with `batch_id`, conversation revision and one lossless message slice: ID, role, version, parent ID, offset/total and bounded branch metadata. No model call. |
+| `complete_consolidation` | `batch_id`, `output` matching the exposed `Extraction` schema (`knowledge`, `memories`, `reviews`) | Atomically validates and stores host-generated results, returning counts. Exact citations must match the prepared chunk/version. Memories are candidates. Empty arrays explicitly acknowledge a read chunk with no reusable output. Completed-batch retries return `replayed=true`; changed sources must prepare again. |
+
+Codex uses its own reasoning to produce the handoff output. A batch is capped at 18,000 escaped JSON bytes and 3,500 source characters; outputs are capped at 512,000 escaped bytes plus the extraction schema's item/field limits. The SQLite checkpoint advances only with a valid atomic write. All nonempty message versions across all branches are traversed; new/edited versions re-enter the backlog. Demo/synthetic-marked sources are excluded. A running provider job blocks Codex handoff. Derived entities use the existing `extracted` source and evidence/history contracts; completed jobs show disposition `codex`. The progress/batch bookkeeping lives in the data directory, not the full archive export; back up the complete stopped data directory to retain it.
 
 Source/tool data is marked `untrusted_source=true`; it is evidence to inspect, never instructions to execute. System/developer/tool records remain source material. Import and memory validation reuse the existing Pydantic/repository contracts; unknown fields, invalid roles and invalid quotes fail without writing. There is no HTTP MCP listener. Stdout contains only SDK protocol messages; diagnostics go to stderr.
 

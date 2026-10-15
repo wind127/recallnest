@@ -119,6 +119,7 @@ export type ProviderSettings = {
   storage?: string;
 };
 export type ServiceStatus = {
+  consolidation_mode?: "provider" | "codex";
   model_configured: boolean;
   worker_running: boolean;
   status: string;

@@ -244,7 +244,7 @@ def test_mcp_sdk_stdio_initialize_tools_read_write_errors_share_rest(tmp_path, m
         with (tmp_path / "stderr.txt").open("w", encoding="utf-8") as errlog:
             async with Client(stdio_client(params, errlog=errlog), mode=mode) as client:
                 tools = await client.list_tools()
-                assert {tool.name for tool in tools.tools} == {"search", "fetch", "context", "submit", "remember"}
+                assert {tool.name for tool in tools.tools} == {"search", "fetch", "context", "submit", "remember", "prepare_consolidation", "complete_consolidation"}
                 result = await client.call_tool("submit", {"conversation": {"source": "synthetic-sdk", "external_id": "sdk", "title": "SDK", "messages": [{"role": "user", "content": "synthetic sdk content"}]}})
                 assert not result.is_error
                 source_id = result.structured_content["conversation_ids"][0]

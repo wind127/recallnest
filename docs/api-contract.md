@@ -1,6 +1,6 @@
 # RecallNest API contract
 
-Implemented version: 0.1.0. JSON archive schema: 1. Default base URL: http://127.0.0.1:8787/api. This contract covers the archive, manual entities, provider settings, consolidation worker, search and personalized chat. See [integrations.md](integrations.md) for the CLI, continuous capture lifecycle and five stdio MCP tools, which share these validation and archival services.
+Implemented version: 0.1.0. JSON archive schema: 1. Default base URL: http://127.0.0.1:8787/api. This contract covers the archive, manual entities, provider settings, consolidation worker, search and personalized chat. See [integrations.md](integrations.md) for the CLI, continuous capture lifecycle and seven stdio MCP tools, including the version-checked Codex consolidation handoff.
 
 All lists return {"items":[...]}. IDs are opaque strings. Source external IDs differ from internal database IDs. Output dates use ISO 8601 UTC (+00:00). Valid ISO/epoch source dates are normalized; epoch numbers mean seconds, dates without an offset mean UTC. Unknown message timestamps remain null. Missing conversation dates use ingestion time. Text and Markdown are untrusted: clients must escape HTML and sanitize Markdown rendering.
 
@@ -20,7 +20,7 @@ HTTP Host and browser Origin must be loopback (localhost, 127.0.0.1, [::1]). Unt
 ~~~json
 {
   "status":"ready","version":"0.1.0","database":"sqlite",
-  "model_configured":false,"worker_running":false,
+  "model_configured":false,"worker_running":false,"consolidation_mode":"provider",
   "limits":{"upload_bytes":33554432,"zip_expanded_bytes":134217728,"zip_members":1000}
 }
 ~~~
@@ -33,6 +33,8 @@ HTTP Host and browser Origin must be loopback (localhost, 127.0.0.1, [::1]). Unt
 ~~~
 
 model_configured means a base URL and chat model are present, not that a connection was verified. Python factory: create_app(data_dir=..., start_worker=False, settings=...). The explicit factory eagerly loads saved provider configuration from the selected data directory; passing explicit settings bypasses saved configuration for isolated tests. Normal CLI serve calls create_app(data_dir=..., start_worker=True), so UI connection settings survive restart. start_worker=True starts/stops a background thread within the FastAPI lifespan. The conventional recallnest.app:app ASGI entrypoint constructs this worker-enabled app lazily on its first ASGI request/lifespan event. Importing modules reads no default private configuration and creates no directory; the first repository read/write initializes SQLite.
+
+`create_app(..., allow_ai=False)` (CLI `serve --no-ai`) sets `consolidation_mode="codex"`, never starts the provider worker, and rejects provider creation with `409 configuration_required`, including connection tests, chat and reindexing. Text search does not create a provider client; semantic REST search falls back to text with a warning. Saved settings are preserved but cannot enable model calls in this mode. MCP `--local-only` also explicitly rejects semantic search. Codex-generated consolidation is available over stdio MCP, not an additional HTTP model endpoint.
 
 Data directory: RECALLNEST_DATA_DIR, default ~/.recallnest; database recallnest.sqlite3. Server-side connection environment: RECALLNEST_BASE_URL, RECALLNEST_API_KEY, RECALLNEST_CHAT_MODEL, RECALLNEST_EMBEDDING_MODEL. Providers use OpenAI-compatible POST {base_url}/chat/completions and optional /embeddings. Include the provider's API path (often /v1) in base_url.
 
